@@ -21,16 +21,19 @@ func NewTCPTransport(listenAddr string) *TCPTransport {
 }
 
 func (t *TCPTransport) Start() error {
-    listener, err := net.Listen("tcp", t.listenAddr)
-    if err != nil {
-        return err
-    }
+	listener, err := net.Listen("tcp", t.listenAddr)
+	if err != nil {
+		return err
+	}
 
-    t.listener = listener
-    go t.acceptConnections()
+	t.listener = listener
+	go t.acceptConnections()
 
-    return nil
+	return nil
 }
 
 func (t *TCPTransport) Stop() error {
 }
+
+
+// to be cont.
