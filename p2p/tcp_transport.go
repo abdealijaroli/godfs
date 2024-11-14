@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"net"
 	"sync"
 )
@@ -20,20 +21,29 @@ func NewTCPTransport(listenAddr string) *TCPTransport {
 	}
 }
 
-func (t *TCPTransport) Start() error {
-	listener, err := net.Listen("tcp", t.listenAddr)
+func (t *TCPTransport) ListenAndAccept() error {
+	var err error
+
+	t.listener, err = net.Listen("tcp", t.listenAddr)
 	if err != nil {
 		return err
 	}
 
-	t.listener = listener
-	go t.acceptConnections()
+	go t.StartAcceptLoop()
 
 	return nil
 }
 
-func (t *TCPTransport) Stop() error {
+func (t *TCPTransport) StartAcceptLoop() {
+	for {
+		conn, err := t.listener.Accept()
+		if err != nil {
+			fmt.Println("Accept error: ", err)
+		}
+		go t.handleConn(conn)
+	}
 }
 
-
-// to be cont.
+func (t *TCPTransport) handleConn(conn net.Conn) {
+	fmt.Println("New incomning conn")
+}
