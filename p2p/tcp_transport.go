@@ -45,5 +45,5 @@ func (t *TCPTransport) StartAcceptLoop() {
 }
 
 func (t *TCPTransport) handleConn(conn net.Conn) {
-	fmt.Println("New incomning conn")
+	fmt.Println("new incoming conn")
 }
