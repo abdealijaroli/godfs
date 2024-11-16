@@ -6,6 +6,13 @@ import (
 	"sync"
 )
 
+// TCPPeer is the remote node in a TCP connection.
+type TCPPeer struct {
+	conn     net.Conn
+	outbound bool // true if we dialed the connection, false if we accepted it
+}
+
+// TCPTransport is a transport implementation that uses TCP sockets.
 type TCPTransport struct {
 	listenAddr string
 	listener   net.Listener
