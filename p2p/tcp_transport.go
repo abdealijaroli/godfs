@@ -12,6 +12,13 @@ type TCPPeer struct {
 	outbound bool // true if we dialed the connection, false if we accepted it
 }
 
+func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
+	return &TCPPeer{
+		conn:     conn,
+		outbound: outbound,
+	}
+}
+
 // TCPTransport is a transport implementation that uses TCP sockets.
 type TCPTransport struct {
 	listenAddr string
