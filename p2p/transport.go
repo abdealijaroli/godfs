@@ -7,5 +7,4 @@ type Peer interface {
 
 // handles communication between nodes in the network
 type Transport interface {
-
 }

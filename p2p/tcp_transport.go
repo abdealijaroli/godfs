@@ -9,7 +9,7 @@ import (
 // TCPPeer is the remote node in a TCP connection.
 type TCPPeer struct {
 	conn     net.Conn
-	outbound bool // true if we dialed the connection, false if we accepted it
+	outbound bool // true if we dialed the connection, fa lse if we accepted it
 }
 
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
@@ -59,5 +59,7 @@ func (t *TCPTransport) StartAcceptLoop() {
 }
 
 func (t *TCPTransport) handleConn(conn net.Conn) {
-	fmt.Println("new incoming conn")
+	peer := NewTCPPeer(conn, true)
+
+	fmt.Println("new incoming conn: ", peer.conn.RemoteAddr())
 }

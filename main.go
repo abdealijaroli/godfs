@@ -1,9 +1,20 @@
 package main
 
 import (
-	"fmt"
+	"log"
+
+	"github.com/abdealijaroli/godfs/p2p"
 )
 
 func main() {
-	fmt.Println("Hello, World!")
+	// create a new TCP transport
+	t := p2p.NewTCPTransport(":8080")
+
+	// start listening for incoming connections
+	err := t.ListenAndAccept()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for {
+	}
 }
