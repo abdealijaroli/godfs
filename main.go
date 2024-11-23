@@ -10,7 +10,7 @@ func main() {
 	// create a new TCP transport
 	t := p2p.NewTCPTransport(":8080")
 
-	// start listening for incoming connections
+	// start listeningn for incoming connections
 	err := t.ListenAndAccept()
 	if err != nil {
 		log.Fatal(err)
