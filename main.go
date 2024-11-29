@@ -9,8 +9,11 @@ import (
 func main() {
 	t := p2p.NewTCPTransport(":8080")
 
-	err := t.ListenAndAccept()
-	if err != nil {
-		log.Fatal(err)
-	}
+	go func() {
+		if err := t.ListenAndAccept(); err != nil {
+			log.Printf("Transport error: %v", err)
+		}
+	}()
+
+	select {}
 }
