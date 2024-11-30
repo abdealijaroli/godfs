@@ -7,7 +7,7 @@ import (
 	"github.com/abdealijaroli/godfs/pkg/p2p"
 )
 
-func dialer() {
+func main() {
 	transport := p2p.NewTCPTransport(":8081")
 
 	go func() {
