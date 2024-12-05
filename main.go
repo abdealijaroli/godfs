@@ -1,19 +1,20 @@
 package main
 
 import (
+	"flag"
 	"log"
-
-	"github.com/abdealijaroli/godfs/pkg/p2p"
 )
 
 func main() {
-	t := p2p.NewTCPTransport(":8080")
+	nodeType := flag.String("type", "serve", "Type of node (serve/dial)")
+	flag.Parse()
 
-	go func() {
-		if err := t.ListenAndAccept(); err != nil {
-			log.Printf("Transport error: %v", err)
-		}
-	}()
-
-	select {}
+	switch *nodeType {
+	case "serve":
+		Serve()
+	case "dial":
+		Dial()
+	default:
+		log.Fatalf("Invalid node type: %s", *nodeType)
+	}
 }
