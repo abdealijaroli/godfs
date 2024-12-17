@@ -7,14 +7,14 @@ import (
 	"github.com/abdealijaroli/godfs/pkg/p2p"
 )
 
-func main() {
+func Dial() {
 	transport := p2p.NewTCPTransport(":8081")
 
 	go func() {
 		if err := transport.ListenAndAccept(); err != nil {
 			log.Fatal(err)
 		}
-	}() 
+	}()
 
 	time.Sleep(2 * time.Second)
 
@@ -33,4 +33,6 @@ func main() {
 	}
 
 	log.Println("Message sent successfully!")
+
+	select {}
 }
