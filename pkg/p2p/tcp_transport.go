@@ -6,8 +6,35 @@ import (
 	"fmt"
 	"net"
 	"sync"
+
+	"github.com/abdealijaroli/godfs/pkg/protocol"
 )
 
+// TCPPeer
+type TCPPeer struct {
+	conn     net.Conn
+	outbound bool
+}
+
+func (p *TCPPeer) Send(msg Message) error {
+	encoder := json.NewEncoder(p.conn)
+	p.outbound = true
+	return encoder.Encode(msg)
+}
+
+func (p *TCPPeer) Receive() (Message, error) {
+	decoder := json.NewDecoder(bufio.NewReader(p.conn))
+	p.outbound = false
+	var msg Message
+	err := decoder.Decode(&msg)
+	return msg, err
+}
+
+func (p *TCPPeer) Close() error {
+	return p.conn.Close()
+}
+
+// TCPTransport
 type TCPTransport struct {
 	address  string
 	listener net.Listener
@@ -31,6 +58,12 @@ func (t *TCPTransport) Dial(address string) (Peer, error) {
 	peer := &TCPPeer{
 		conn: conn,
 	}
+
+	err = protocol.PerformHandshake(conn, address)
+	if err != nil {
+		return nil, err
+	}
+
 	t.lock.Lock()
 	t.peers[address] = peer
 	t.lock.Unlock()
@@ -94,27 +127,4 @@ func (t *TCPTransport) handleConnection(peer Peer) {
 		}
 		fmt.Printf("Received message: %s\n", string(msg.Payload))
 	}
-}
-
-type TCPPeer struct {
-	conn     net.Conn
-	outbound bool
-}
-
-func (p *TCPPeer) Send(msg Message) error {
-	encoder := json.NewEncoder(p.conn)
-	p.outbound = true
-	return encoder.Encode(msg)
-}
-
-func (p *TCPPeer) Receive() (Message, error) {
-	decoder := json.NewDecoder(bufio.NewReader(p.conn))
-	p.outbound = false
-	var msg Message
-	err := decoder.Decode(&msg)
-	return msg, err
-}
-
-func (p *TCPPeer) Close() error {
-	return p.conn.Close()
 }
