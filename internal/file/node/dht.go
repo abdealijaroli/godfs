@@ -26,10 +26,9 @@ func (d *DHT) AddNode(node string) {
 
     for _, n := range d.nodes {
         if n == node {
-            return // Node already exists
+            return
         }
     }
-
     d.nodes = append(d.nodes, node)
 }
 
