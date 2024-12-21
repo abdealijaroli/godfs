@@ -47,7 +47,7 @@ func (d *DHT) RemoveNode(node string) {
 func (d *DHT) Put(key, value string) {
     d.lock.Lock()
     defer d.lock.Unlock()
-    d.data[key] = value
+    d.data[key] = value 
 }
 
 func (d *DHT) Get(key string) (string, error) {
