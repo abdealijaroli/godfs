@@ -27,7 +27,7 @@ func (d *DHT) AddNode(node string) {
     for _, n := range d.nodes {
         if n == node {
             return
-        }
+        } 
     }
     d.nodes = append(d.nodes, node)
 }
