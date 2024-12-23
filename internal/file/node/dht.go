@@ -77,4 +77,4 @@ func (d *DHT) ListNodes() []string {
     d.lock.RLock()
     defer d.lock.RUnlock()
     return append([]string{}, d.nodes...)
-}
+} 
