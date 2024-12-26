@@ -110,12 +110,12 @@ func (d *DHT) ListNodes() []string {
 
 func (d *DHT) sendToNode(node, key, value string) error {
 	log.Printf("Replicating key %s to node %s", key, node)
-	// networking logic
+    
 	return nil
 }
 
 func (d *DHT) queryNode(node, key string) (string, error) {
 	log.Printf("Querying key %s from node %s", key, node)
-	// networking logic here to fetch the data.
+
 	return "", errors.New("not implemented")
 }
