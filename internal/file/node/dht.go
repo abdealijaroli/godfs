@@ -110,7 +110,7 @@ func (d *DHT) ListNodes() []string {
 
 func (d *DHT) sendToNode(node, key, value string) error {
 	log.Printf("Replicating key %s to node %s", key, node)
-    
+
 	return nil
 }
 
