@@ -2,11 +2,14 @@ package p2p
 
 import (
 	"bufio"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 
+	"github.com/abdealijaroli/godfs/internal/node"
 	"github.com/abdealijaroli/godfs/pkg/protocol"
 )
 
@@ -50,7 +53,8 @@ func NewTCPTransport(address string) *TCPTransport {
 }
 
 func (t *TCPTransport) Dial(address string) (Peer, error) {
-	conn, err := net.Dial("tcp", address)
+	config := &tls.Config{InsecureSkipVerify: true}
+	conn, err := tls.Dial("tcp", address, config)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +75,8 @@ func (t *TCPTransport) Dial(address string) (Peer, error) {
 }
 
 func (t *TCPTransport) ListenAndAccept() error {
-	listener, err := net.Listen("tcp", t.address)
+	config := &tls.Config{Certificates: []tls.Certificate{}, InsecureSkipVerify: true}
+	listener, err := tls.Listen("tcp", t.address, config)
 	if err != nil {
 		return err
 	}
@@ -127,4 +132,17 @@ func (t *TCPTransport) handleConnection(peer Peer) {
 		}
 		fmt.Printf("Received message: %s\n", string(msg.Payload))
 	}
+}
+
+func (t *TCPTransport) ConnectToPeers(peerDiscovery *node.PeerDiscovery) error {
+	peers := peerDiscovery.GetPeers()
+	for _, peerAddr := range peers {
+		_, err := t.Dial(peerAddr)
+		if err != nil {
+			log.Println("Error connecting to peer:", err)
+			continue
+		}
+		log.Println("Connected to peer:", peerAddr)
+	}
+	return nil
 }
