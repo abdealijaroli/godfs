@@ -177,3 +177,4 @@ func (d *DHT) consistentHash(key string) string {
 
 	return d.nodes[0]
 }
+ 
