@@ -1,11 +1,15 @@
 package node
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"hash/fnv"
 	"log"
 	"sort"
 	"sync"
+
+	"github.com/abdealijaroli/godfs/pkg/p2p"
 )
 
 type DHT struct {
@@ -140,15 +144,67 @@ func (d *DHT) ListNodes() []string {
 }
 
 func (d *DHT) sendToNode(node, key, value string) error {
-	log.Printf("Replicating key %s to node %s", key, node)
-	// todo
-	return nil
+	payload := map[string]string{
+		"key":   key,
+		"value": value,
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	msg := p2p.Message{
+		Type:    "dht_store",
+		Payload: data,
+	}
+
+	transport := p2p.NewTCPTransport(d.selfNode)
+	peer, err := transport.Dial(node)
+	if err != nil {
+		return fmt.Errorf("failed to connect to node %s: %v", node, err)
+	}
+	defer peer.Close()
+
+	return peer.Send(msg)
 }
 
 func (d *DHT) queryNode(node, key string) (string, error) {
-	log.Printf("Querying key %s from node %s", key, node)
-	// todo
-	return "", errors.New("not implemented")
+	payload := map[string]string{
+		"key": key,
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	msg := p2p.Message{
+		Type:    "dht_query",
+		Payload: data,
+	}
+
+	transport := p2p.NewTCPTransport(d.selfNode)
+	peer, err := transport.Dial(node)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to node %s: %v", node, err)
+	}
+	defer peer.Close()
+
+	if err := peer.Send(msg); err != nil {
+		return "", err
+	}
+
+	response, err := peer.Receive()
+	if err != nil {
+		return "", err
+	}
+	var result map[string]string
+	if err := json.Unmarshal(response.Payload, &result); err != nil {
+		return "", err
+	}
+
+	return result["value"], nil
 }
 
 // consistent hashing
@@ -177,4 +233,3 @@ func (d *DHT) consistentHash(key string) string {
 
 	return d.nodes[0]
 }
- 
