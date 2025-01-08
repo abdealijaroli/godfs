@@ -91,7 +91,7 @@ func (d *DHT) PutConsistent(key, value string, replicationFactor int) error {
 	// Also store locally
 	d.data[key] = value
 
-	// Replicate to additional nodes based on replication factor
+	// Replicate to additional nodes
 	replicated := 1
 	for _, node := range d.nodes {
 		if node == targetNode || replicated >= replicationFactor {
@@ -207,8 +207,7 @@ func (d *DHT) queryNode(node, key string) (string, error) {
 	return result["value"], nil
 }
 
-// consistent hashing
-func hash(key string) uint32 {
+func Hash(key string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(key))
 	return h.Sum32()
@@ -219,14 +218,14 @@ func (d *DHT) consistentHash(key string) string {
 		return ""
 	}
 
-	keyHash := hash(key)
+	keyHash := Hash(key)
 
 	sort.Slice(d.nodes, func(i, j int) bool {
-		return hash(d.nodes[i]) < hash(d.nodes[j])
+		return Hash(d.nodes[i]) < Hash(d.nodes[j])
 	})
 
 	for _, node := range d.nodes {
-		if hash(node) >= keyHash {
+		if Hash(node) >= keyHash {
 			return node
 		}
 	}
