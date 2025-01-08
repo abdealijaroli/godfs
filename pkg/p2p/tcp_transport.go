@@ -9,7 +9,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/abdealijaroli/godfs/internal/node"
+	"github.com/abdealijaroli/godfs/internal/discovery"
 	"github.com/abdealijaroli/godfs/pkg/protocol"
 )
 
@@ -134,7 +134,7 @@ func (t *TCPTransport) handleConnection(peer Peer) {
 	}
 }
 
-func (t *TCPTransport) ConnectToPeers(peerDiscovery *node.PeerDiscovery) error {
+func (t *TCPTransport) ConnectToPeers(peerDiscovery *discovery.PeerDiscovery) error {
 	peers := peerDiscovery.GetPeers()
 	for _, peerAddr := range peers {
 		_, err := t.Dial(peerAddr)
