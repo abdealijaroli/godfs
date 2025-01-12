@@ -1,38 +1,44 @@
 package main
 
 import (
-	"log"
-	"time"
+    "log"
+    "time"
 
-	"github.com/abdealijaroli/godfs/pkg/p2p"
+    "github.com/abdealijaroli/godfs/config"
+    "github.com/abdealijaroli/godfs/pkg/p2p"
 )
 
 func Dial() {
-	transport := p2p.NewTCPTransport(":8081")
+    tlsConfig, err := config.LoadTLSConfig("certs/client.crt", "certs/client.key", "certs/ca.crt")
+    if err != nil {
+        log.Fatal("Failed to load TLS config:", err)
+    }
 
-	go func() {
-		if err := transport.ListenAndAccept(); err != nil {
-			log.Fatal(err)
-		}
-	}()
+    transport := p2p.NewTCPTransport(":8081", tlsConfig)
 
-	time.Sleep(2 * time.Second)
+    go func() {
+        if err := transport.ListenAndAccept(); err != nil {
+            log.Fatal(err)
+        }
+    }()
 
-	log.Println("Dialing server at localhost:8080")
-	peer, err := transport.Dial("localhost:8080")
-	if err != nil {
-		log.Fatal("Failed to connect to server:", err)
-	}
+    time.Sleep(2 * time.Second)
 
-	err = peer.Send(p2p.Message{
-		Type:    "greeting",
-		Payload: []byte("Hello from the client node!"),
-	})
-	if err != nil {
-		log.Fatal("Failed to send message:", err)
-	}
+    log.Println("Dialing server at localhost:8080")
+    peer, err := transport.Dial("localhost:8080")
+    if err != nil {
+        log.Fatal("Failed to connect to server:", err)
+    }
 
-	log.Println("Message sent successfully!")
+    err = peer.Send(p2p.Message{
+        Type:    "greeting",
+        Payload: []byte("Hello from the client node!"),
+    })
+    if err != nil {
+        log.Fatal("Failed to send message:", err)
+    }
 
-	select {}
+    log.Println("Message sent successfully!")
+
+    select {}
 }
