@@ -114,8 +114,17 @@
             <div class="panel" id="data">
                 <h2>Distributed Data</h2>
             </div>
+            <div class="panel" id="chunks">
+                <h2>Chunk Distribution</h2>
+            </div>
             <div class="panel" id="ring">
                 <h2>Network Topology</h2>
+            </div>
+            <div class="panel">
+                <h2>Upload Dummy File</h2>
+                <form id="upload-form">
+                    <button type="submit">Upload Dummy File</button>
+                </form>
             </div>
         </div>
         <script>
@@ -151,25 +160,38 @@
                 fetch("/api/nodes")
                     .then((r) => r.json())
                     .then((nodes) => {
+                        console.log("Nodes:", nodes);
                         d3.select("#nodes").html(`
-                    <h2>Network Nodes (${nodes.length})</h2>
-                    <pre>${JSON.stringify(nodes, null, 2)}</pre>
-                `);
+                        <h2>Network Nodes (${nodes.length})</h2>
+                        <pre>${JSON.stringify(nodes, null, 2)}</pre>
+                    `);
                     });
 
                 fetch("/api/data")
                     .then((r) => r.json())
                     .then((data) => {
+                        console.log("Data:", data);
                         d3.select("#data").html(`
-                    <h2>Distributed Data</h2>
-                    <pre>${JSON.stringify(data, null, 2)}</pre>
-                `);
+                        <h2>Distributed Data</h2>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `);
                     });
 
                 fetch("/api/ring")
                     .then((r) => r.json())
                     .then((ringData) => {
+                        console.log("Ring Data:", ringData);
                         updateRing(ringData);
+                    });
+
+                fetch("/api/chunks")
+                    .then((r) => r.json())
+                    .then((chunkData) => {
+                        console.log("Chunk Data:", chunkData);
+                        d3.select("#chunks").html(`
+                        <h2>Chunk Distribution</h2>
+                        <pre>${JSON.stringify(chunkData, null, 2)}</pre>
+                    `);
                     });
             }
 
@@ -239,6 +261,23 @@
                     .select("text")
                     .text((d, i) => `Node ${i + 1}`);
             }
+
+            document
+                .getElementById("upload-form")
+                .addEventListener("submit", function (event) {
+                    event.preventDefault();
+                    fetch("/api/upload", {
+                        method: "POST", 
+                    })
+                        .then((response) => response.text())
+                        .then((data) => {
+                            alert(data);
+                            refreshData();
+                        })
+                        .catch((error) => {
+                            console.error("Error uploading dummy file:", error);
+                        });
+                });
 
             setInterval(refreshData, 1000);
             refreshData();
