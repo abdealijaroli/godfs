@@ -34,6 +34,7 @@ func (s *DebugServer) Start(port string) error {
     http.HandleFunc("/api/chunks", s.handleChunks)
     http.HandleFunc("/api/upload", s.handleUpload)
 
+    log.Printf("Starting server on port %s", port)
     return http.ListenAndServeTLS(port, "certs/server.crt", "certs/server.key", nil)
 }
 
