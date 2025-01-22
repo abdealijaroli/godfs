@@ -1,36 +1,42 @@
 package node
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"hash/fnv"
-	"log"
-	"sort"
 	"sync"
+	"time"
 
 	"github.com/abdealijaroli/godfs/pkg/p2p"
 )
 
 type DHT struct {
-	data     map[string]string
-	nodes    []string
-	selfNode string
-	lock     sync.RWMutex
+	data      map[string]DataEntry
+	nodes     []string
+	selfNode  string
+	lock      sync.RWMutex
+	transport *p2p.TCPTransport
 }
 
-func NewDHT(selfNode string) *DHT {
+type DataEntry struct {
+	Value     string
+	Version   int64
+	Timestamp time.Time
+}
+
+func NewDHT(selfNode string, tlsConfig *tls.Config) *DHT {
 	return &DHT{
-		data:     make(map[string]string),
-		nodes:    []string{},
-		selfNode: selfNode,
+		data:      make(map[string]DataEntry),
+		nodes:     []string{},
+		selfNode:  selfNode,
+		transport: p2p.NewTCPTransport(selfNode, tlsConfig),
 	}
 }
 
 func (d *DHT) AddNode(node string) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
-
 	for _, n := range d.nodes {
 		if n == node {
 			return
@@ -39,90 +45,20 @@ func (d *DHT) AddNode(node string) {
 	d.nodes = append(d.nodes, node)
 }
 
-func (d *DHT) RemoveNode(node string) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
-	for i, n := range d.nodes {
-		if n == node {
-			d.nodes = append(d.nodes[:i], d.nodes[i+1:]...)
-			break
-		}
-	}
-}
-
-func (d *DHT) Put(key, value string, replicationFactor int) error {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-	d.data[key] = value
-
-	for i, node := range d.nodes {
-		if node == d.selfNode {
-			continue
-		}
-
-		err := d.sendToNode(node, key, value)
-		if err != nil {
-			log.Printf("Failed to replicate to node %s: %v", node, err)
-		}
-
-		if i+1 >= replicationFactor {
-			break
-		}
-	}
-	return nil
-}
-
-func (d *DHT) PutConsistent(key, value string, replicationFactor int) error {
-	targetNode := d.consistentHash(key)
-	if targetNode == "" {
-		return errors.New("no nodes available")
-	}
-
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
-	err := d.sendToNode(targetNode, key, value)
-	if err != nil {
-		log.Printf("Failed to replicate key %s to node %s: %v", key, targetNode, err)
-		return err
-	}
-
-	// Also store locally
-	d.data[key] = value
-
-	// Replicate to additional nodes
-	replicated := 1
-	for _, node := range d.nodes {
-		if node == targetNode || replicated >= replicationFactor {
-			break
-		}
-		err := d.sendToNode(node, key, value)
-		if err != nil {
-			log.Printf("Failed to replicate key %s to node %s: %v", key, node, err)
-			continue
-		}
-		replicated++
-	}
-
-	return nil
-}
-
-func (d *DHT) Get(key string) (string, error) {
+func (d *DHT) ListNodes() []string {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
+	return append([]string{}, d.nodes...)
+}
 
-	value, exists := d.data[key]
-	if exists {
-		return value, nil
+func (d *DHT) GetAllData() map[string]interface{} {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+	data := make(map[string]interface{})
+	for k, v := range d.data {
+		data[k] = v
 	}
-
-	targetNode := d.consistentHash(key)
-	if targetNode != "" {
-		return d.queryNode(targetNode, key)
-	}
-
-	return "", errors.New("key not found in DHT or replicas")
+	return data
 }
 
 func (d *DHT) Remove(key string) error {
@@ -137,10 +73,60 @@ func (d *DHT) Remove(key string) error {
 	return nil
 }
 
-func (d *DHT) ListNodes() []string {
+func (d *DHT) Put(key, value string, version int64) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	d.data[key] = DataEntry{
+		Value:     value,
+		Version:   version,
+		Timestamp: time.Now(),
+	}
+}
+
+func (d *DHT) Get(key string) (string, error) {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
-	return append([]string{}, d.nodes...)
+
+	entry, exists := d.data[key]
+	if !exists {
+		return "", errors.New("key not found")
+	}
+
+	return entry.Value, nil
+}
+
+func (d *DHT) Replicate(key, value string) error {
+	for _, node := range d.nodes {
+		err := d.sendToNode(node, key, value)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *DHT) PutConsistent(key, value string, replicationFactor int) error {
+    d.lock.Lock()
+    defer d.lock.Unlock()
+
+    // Store the data locally
+    d.data[key] = DataEntry{
+        Value:     value,
+        Version:   1,
+        Timestamp: time.Now(),
+    }
+
+    // Replicate the data to other nodes
+    for i := 0; i < replicationFactor; i++ {
+        node := d.nodes[i%len(d.nodes)]
+        err := d.sendToNode(node, key, value)
+        if err != nil {
+            return err
+        }
+    }
+
+    return nil
 }
 
 func (d *DHT) sendToNode(node, key, value string) error {
@@ -159,76 +145,17 @@ func (d *DHT) sendToNode(node, key, value string) error {
 		Payload: data,
 	}
 
-	transport := p2p.NewTCPTransport(d.selfNode)
-	peer, err := transport.Dial(node)
+	peer, err := d.transport.Dial(node)
 	if err != nil {
-		return fmt.Errorf("failed to connect to node %s: %v", node, err)
+		return err
 	}
 	defer peer.Close()
 
 	return peer.Send(msg)
 }
 
-func (d *DHT) queryNode(node, key string) (string, error) {
-	payload := map[string]string{
-		"key": key,
-	}
-
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return "", err
-	}
-
-	msg := p2p.Message{
-		Type:    "dht_query",
-		Payload: data,
-	}
-
-	transport := p2p.NewTCPTransport(d.selfNode)
-	peer, err := transport.Dial(node)
-	if err != nil {
-		return "", fmt.Errorf("failed to connect to node %s: %v", node, err)
-	}
-	defer peer.Close()
-
-	if err := peer.Send(msg); err != nil {
-		return "", err
-	}
-
-	response, err := peer.Receive()
-	if err != nil {
-		return "", err
-	}
-	var result map[string]string
-	if err := json.Unmarshal(response.Payload, &result); err != nil {
-		return "", err
-	}
-
-	return result["value"], nil
-}
-
 func Hash(key string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(key))
 	return h.Sum32()
-}
-
-func (d *DHT) consistentHash(key string) string {
-	if len(d.nodes) == 0 {
-		return ""
-	}
-
-	keyHash := Hash(key)
-
-	sort.Slice(d.nodes, func(i, j int) bool {
-		return Hash(d.nodes[i]) < Hash(d.nodes[j])
-	})
-
-	for _, node := range d.nodes {
-		if Hash(node) >= keyHash {
-			return node
-		}
-	}
-
-	return d.nodes[0]
 }
