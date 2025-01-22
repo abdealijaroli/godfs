@@ -43,18 +43,19 @@ type TCPTransport struct {
 	listener net.Listener
 	peers    map[string]Peer
 	lock     sync.Mutex
+	config   *tls.Config
 }
 
-func NewTCPTransport(address string) *TCPTransport {
+func NewTCPTransport(address string, config *tls.Config) *TCPTransport {
 	return &TCPTransport{
 		address: address,
 		peers:   make(map[string]Peer),
+		config:  config,
 	}
 }
 
 func (t *TCPTransport) Dial(address string) (Peer, error) {
-	config := &tls.Config{InsecureSkipVerify: true}
-	conn, err := tls.Dial("tcp", address, config)
+	conn, err := tls.Dial("tcp", address, t.config)
 	if err != nil {
 		return nil, err
 	}
@@ -75,8 +76,7 @@ func (t *TCPTransport) Dial(address string) (Peer, error) {
 }
 
 func (t *TCPTransport) ListenAndAccept() error {
-	config := &tls.Config{Certificates: []tls.Certificate{}, InsecureSkipVerify: true}
-	listener, err := tls.Listen("tcp", t.address, config)
+	listener, err := tls.Listen("tcp", t.address, t.config)
 	if err != nil {
 		return err
 	}
