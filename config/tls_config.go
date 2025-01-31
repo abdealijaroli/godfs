@@ -23,6 +23,11 @@ func LoadTLSConfig(certFile, keyFile, caFile string) (*tls.Config, error) {
     tlsConfig := &tls.Config{
         Certificates: []tls.Certificate{cert},
         RootCAs:      caCertPool,
+        MinVersion:   tls.VersionTLS12,
+        CipherSuites: []uint16{
+            tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+            tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+        },
     }
 
     return tlsConfig, nil
