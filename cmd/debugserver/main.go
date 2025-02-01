@@ -37,7 +37,6 @@ func (s *DebugServer) Start(port string) error {
 	log.Printf("Starting server on port %s", port)
 	// return http.ListenAndServeTLS(port, "certs/server.crt", "certs/server.key", nil)
 	return http.ListenAndServe(port, nil) // fix tls config
-
 }
 
 func (s *DebugServer) handleDashboard(w http.ResponseWriter, r *http.Request) {
