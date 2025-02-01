@@ -35,7 +35,9 @@ func (s *DebugServer) Start(port string) error {
 	http.HandleFunc("/api/upload", s.handleUpload)
 
 	log.Printf("Starting server on port %s", port)
+	// return http.ListenAndServeTLS(port, "certs/server.crt", "certs/server.key", nil)
 	return http.ListenAndServe(port, nil) // fix tls config
+
 }
 
 func (s *DebugServer) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -136,8 +138,8 @@ func main() {
 	dht.AddNode("localhost:8001")
 	dht.AddNode("localhost:8002")
 	dht.AddNode("localhost:8003")
-	dht.AddNode("localhost:8004")
-	dht.AddNode("localhost:8005")
+	// dht.AddNode("localhost:8004")
+	// dht.AddNode("localhost:8005")
 
 	transport := p2p.NewTCPTransport("localhost:"+*port, tlsConfig)
 	go func() {
