@@ -107,26 +107,30 @@ func (d *DHT) Replicate(key, value string) error {
 }
 
 func (d *DHT) PutConsistent(key, value string, replicationFactor int) error {
-    d.lock.Lock()
-    defer d.lock.Unlock()
+	d.lock.Lock()
+	defer d.lock.Unlock()
 
-    // Store the data locally
-    d.data[key] = DataEntry{
-        Value:     value,
-        Version:   1,
-        Timestamp: time.Now(),
-    }
+	// Store data locally
+	d.data[key] = DataEntry{
+		Value:     value,
+		Version:   1,
+		Timestamp: time.Now(),
+	}
 
-    // Replicate the data to other nodes
-    for i := 0; i < replicationFactor; i++ {
-        node := d.nodes[i%len(d.nodes)]
-        err := d.sendToNode(node, key, value)
-        if err != nil {
-            return err
-        }
-    }
+	if len(d.nodes) == 0 {
+		return errors.New("no available nodes to replicate")
+	}
 
-    return nil
+	// Replicate to available nodes
+	for i := 0; i < replicationFactor && i < len(d.nodes); i++ {
+		node := d.nodes[i%len(d.nodes)]
+		err := d.sendToNode(node, key, value)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (d *DHT) sendToNode(node, key, value string) error {
@@ -151,7 +155,23 @@ func (d *DHT) sendToNode(node, key, value string) error {
 	}
 	defer peer.Close()
 
-	return peer.Send(msg)
+	// Send data
+	err = peer.Send(msg)
+	if err != nil {
+		return err
+	}
+
+	// Read acknowledgment
+	resp, err := peer.Receive()
+	if err != nil {
+		return err
+	}
+
+	if resp.Type != "ack" {
+		return errors.New("unexpected response from node")
+	}
+
+	return nil
 }
 
 func Hash(key string) uint32 {

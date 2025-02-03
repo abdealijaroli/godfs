@@ -55,23 +55,28 @@ func NewTCPTransport(address string, config *tls.Config) *TCPTransport {
 }
 
 func (t *TCPTransport) Dial(address string) (Peer, error) {
+	log.Printf("Attempting to dial %s", address)
+
 	conn, err := tls.Dial("tcp", address, t.config)
 	if err != nil {
+		log.Printf("TLS dial error: %v", err)
 		return nil, err
 	}
 
-	peer := &TCPPeer{
-		conn: conn,
-	}
+	peer := &TCPPeer{conn: conn}
 
 	err = protocol.PerformHandshake(conn, address)
 	if err != nil {
+		log.Printf("Handshake failed with %s: %v", address, err)
+		conn.Close()
 		return nil, err
 	}
 
+	log.Printf("Connected successfully to %s", address)
 	t.lock.Lock()
 	t.peers[address] = peer
 	t.lock.Unlock()
+
 	return peer, nil
 }
 
@@ -86,7 +91,8 @@ func (t *TCPTransport) ListenAndAccept() error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			return err
+			log.Println(err)
+			continue
 		}
 
 		peer := &TCPPeer{
