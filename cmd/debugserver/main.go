@@ -38,7 +38,7 @@ func (s *DebugServer) Start(port string) error {
 	// return http.ListenAndServeTLS(port, "certs/server.crt", "certs/server.key", nil)
 	return http.ListenAndServe(port, nil) // fix tls config
 }
-
+ 
 func (s *DebugServer) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.ParseFiles("templates/dashboard.html"))
 	tmpl.Execute(w, nil)
