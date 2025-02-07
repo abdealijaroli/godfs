@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/abdealijaroli/godfs/config"
 	"github.com/abdealijaroli/godfs/internal/file"
 	"github.com/abdealijaroli/godfs/internal/node"
 	"github.com/abdealijaroli/godfs/pkg/p2p"
@@ -27,24 +28,49 @@ func NewDebugServer(dht *node.DHT, fileManager *file.FileManager) *DebugServer {
 }
 
 func (s *DebugServer) Start(port string) error {
-	http.HandleFunc("/", s.handleDashboard)
-	http.HandleFunc("/api/nodes", s.handleNodes)
-	http.HandleFunc("/api/data", s.handleData)
-	http.HandleFunc("/api/ring", s.handleRing)
-	http.HandleFunc("/api/chunks", s.handleChunks)
-	http.HandleFunc("/api/upload", s.handleUpload)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", s.handleDashboard)
+	mux.HandleFunc("/api/nodes", s.handleNodes)
+	mux.HandleFunc("/api/data", s.handleData)
+	mux.HandleFunc("/api/ring", s.handleRing)
+	mux.HandleFunc("/api/chunks", s.handleChunks)
+	mux.HandleFunc("/api/upload", s.handleUpload)
 
 	log.Printf("Starting server on port %s", port)
-	// return http.ListenAndServeTLS(port, "certs/server.crt", "certs/server.key", nil)
-	return http.ListenAndServe(port, nil) // fix tls config
+	tlsConfig, err := config.LoadTLSConfig("certs/server.crt", "certs/server.key", "certs/ca.crt")
+	if err != nil {
+		return err
+	}
+
+	// Start HTTP server for development
+	go func() {
+		log.Printf("Starting HTTP server on port %s", port)
+		if err := http.ListenAndServe(port, mux); err != nil {
+			log.Printf("HTTP server error: %v", err)
+		}
+	}()
+
+	// Start HTTPS server
+	tlsPort := ":8443" // Different port for HTTPS
+	log.Printf("Starting HTTPS server on port %s", tlsPort)
+	server := &http.Server{
+		Addr:      tlsPort,
+		Handler:   mux,
+		TLSConfig: tlsConfig,
+	}
+	return server.ListenAndServeTLS("certs/server.crt", "certs/server.key")
 }
- 
+
 func (s *DebugServer) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.ParseFiles("templates/dashboard.html"))
-	tmpl.Execute(w, nil)
+	if err := tmpl.Execute(w, nil); err != nil {
+		http.Error(w, "Failed to render dashboard", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *DebugServer) handleNodes(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s.dht.ListNodes())
 }
 
@@ -137,8 +163,8 @@ func main() {
 	dht.AddNode("localhost:8001")
 	dht.AddNode("localhost:8002")
 	dht.AddNode("localhost:8003")
-	// dht.AddNode("localhost:8004")
-	// dht.AddNode("localhost:8005")
+	dht.AddNode("localhost:8004")
+	dht.AddNode("localhost:8005")
 
 	transport := p2p.NewTCPTransport("localhost:"+*port, tlsConfig)
 	go func() {

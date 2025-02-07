@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/abdealijaroli/godfs/internal/discovery"
 	"github.com/abdealijaroli/godfs/pkg/protocol"
@@ -55,13 +56,16 @@ func NewTCPTransport(address string, config *tls.Config) *TCPTransport {
 }
 
 func (t *TCPTransport) Dial(address string) (Peer, error) {
-	log.Printf("Attempting to dial %s", address)
+	dialer := &net.Dialer{
+		Timeout: 30 * time.Second,
+	}
 
-	conn, err := tls.Dial("tcp", address, t.config)
+	conn, err := tls.DialWithDialer(dialer, "tcp", address, t.config)
 	if err != nil {
-		log.Printf("TLS dial error: %v", err)
 		return nil, err
 	}
+	log.Printf("Attempting to dial %s", address)
+
 
 	peer := &TCPPeer{conn: conn}
 

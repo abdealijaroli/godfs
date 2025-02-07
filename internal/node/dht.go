@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"hash/fnv"
+	"fmt"
 	"sync"
 	"time"
 
@@ -149,29 +150,36 @@ func (d *DHT) sendToNode(node, key, value string) error {
 		Payload: data,
 	}
 
-	peer, err := d.transport.Dial(node)
-	if err != nil {
-		return err
-	}
-	defer peer.Close()
+	const maxRetries = 3
+	var lastErr error
 
-	// Send data
-	err = peer.Send(msg)
-	if err != nil {
-		return err
-	}
+	for i := 0; i < maxRetries; i++ {
+		peer, err := d.transport.Dial(node)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer peer.Close()
 
-	// Read acknowledgment
-	resp, err := peer.Receive()
-	if err != nil {
-		return err
-	}
+		// Send data
+		err = peer.Send(msg)
+		if err != nil {
+			return err
+		}
 
-	if resp.Type != "ack" {
-		return errors.New("unexpected response from node")
-	}
+		// Read acknowledgment
+		resp, err := peer.Receive()
+		if err != nil {
+			return err
+		}
 
-	return nil
+		if resp.Type != "ack" {
+			return errors.New("unexpected response from node")
+		}
+
+		return nil
+	}
+	return fmt.Errorf("failed after %d retries: %v", maxRetries, lastErr)
 }
 
 func Hash(key string) uint32 {
