@@ -32,12 +32,12 @@ func loadTLSConfig() (*tls.Config, error) {
 }
 
 func TestDHT(t *testing.T) {
-	tlsConfig, err := loadTLSConfig()
+	_, err := loadTLSConfig()
 	if err != nil {
 		t.Fatalf("Failed to load TLS config: %v", err)
 	}
 
-	dht := node.NewDHT("node1", tlsConfig)
+	dht := node.NewDHT("node1")
 
 	dht.AddNode("node2")
 	dht.AddNode("node3")
@@ -60,12 +60,12 @@ func TestDHT(t *testing.T) {
 }
 
 func TestDHTReplication(t *testing.T) {
-	tlsConfig, err := loadTLSConfig()
+	_, err := loadTLSConfig()
 	if err != nil {
 		t.Fatalf("Failed to load TLS config: %v", err)
 	}
 
-	dht := node.NewDHT("node1", tlsConfig)
+	dht := node.NewDHT("node1")
 
 	dht.AddNode("node2")
 	dht.AddNode("node3")
