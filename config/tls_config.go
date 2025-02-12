@@ -1,34 +1,42 @@
 package config
 
 import (
-    "crypto/tls"
-    "crypto/x509"
-    "os"
+	"crypto/tls"
+	"crypto/x509"
+	"os"
+	"fmt"
+	"net"
 )
 
+func DevTransport() net.Listener {
+    listener, err := net.Listen("tcp", "localhost:8000")
+    if err != nil {
+        panic(err)
+    }
+    return listener
+}
+
 func LoadTLSConfig(certFile, keyFile, caFile string) (*tls.Config, error) {
-    cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-    if err != nil {
-        return nil, err
-    }
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("load keypair: %v", err)
+	}
 
-    caCert, err := os.ReadFile(caFile)
-    if err != nil {
-        return nil, err
-    }
+	caData, err := os.ReadFile(caFile)
+	if err != nil {
+		return nil, fmt.Errorf("read CA: %v", err)
+	}
 
-    caCertPool := x509.NewCertPool()
-    caCertPool.AppendCertsFromPEM(caCert)
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(caData) {
+		return nil, fmt.Errorf("parse CA: %v", err)
+	}
 
-    tlsConfig := &tls.Config{
-        Certificates: []tls.Certificate{cert},
-        RootCAs:      caCertPool,
-        MinVersion:   tls.VersionTLS12,
-        CipherSuites: []uint16{
-            tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-            tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-        },
-    }
-
-    return tlsConfig, nil
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      pool,
+		ClientCAs:    pool,
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		MinVersion:   tls.VersionTLS12,
+	}, nil
 }
