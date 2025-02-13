@@ -2,19 +2,13 @@ package p2p
 
 import (
 	"bufio"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"sync"
-	"time"
-
-	"github.com/abdealijaroli/godfs/internal/discovery"
-	"github.com/abdealijaroli/godfs/pkg/protocol"
 )
 
-// TCPPeer
 type TCPPeer struct {
 	conn     net.Conn
 	outbound bool
@@ -22,13 +16,11 @@ type TCPPeer struct {
 
 func (p *TCPPeer) Send(msg Message) error {
 	encoder := json.NewEncoder(p.conn)
-	p.outbound = true
 	return encoder.Encode(msg)
 }
 
 func (p *TCPPeer) Receive() (Message, error) {
 	decoder := json.NewDecoder(bufio.NewReader(p.conn))
-	p.outbound = false
 	var msg Message
 	err := decoder.Decode(&msg)
 	return msg, err
@@ -38,70 +30,36 @@ func (p *TCPPeer) Close() error {
 	return p.conn.Close()
 }
 
-// TCPTransport
 type TCPTransport struct {
 	address  string
 	listener net.Listener
 	peers    map[string]Peer
 	lock     sync.Mutex
-	config   *tls.Config
 }
 
-func NewTCPTransport(address string, config *tls.Config) *TCPTransport {
+func NewTCPTransport(address string) *TCPTransport {
 	return &TCPTransport{
 		address: address,
 		peers:   make(map[string]Peer),
-		config:  config,
 	}
-}
-
-func (t *TCPTransport) Dial(address string) (Peer, error) {
-	dialer := &net.Dialer{
-		Timeout: 30 * time.Second,
-	}
-
-	conn, err := tls.DialWithDialer(dialer, "tcp", address, t.config)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("Attempting to dial %s", address)
-
-
-	peer := &TCPPeer{conn: conn}
-
-	err = protocol.PerformHandshake(conn, address)
-	if err != nil {
-		log.Printf("Handshake failed with %s: %v", address, err)
-		conn.Close()
-		return nil, err
-	}
-
-	log.Printf("Connected successfully to %s", address)
-	t.lock.Lock()
-	t.peers[address] = peer
-	t.lock.Unlock()
-
-	return peer, nil
 }
 
 func (t *TCPTransport) ListenAndAccept() error {
-	listener, err := tls.Listen("tcp", t.address, t.config)
+	var err error
+	t.listener, err = net.Listen("tcp", t.address)
 	if err != nil {
 		return err
 	}
-	t.listener = listener
 
-	fmt.Println("Listening on", t.address)
+	fmt.Printf("Listening on %s\n", t.address)
 	for {
-		conn, err := listener.Accept()
+		conn, err := t.listener.Accept()
 		if err != nil {
-			log.Println(err)
+			log.Printf("Accept error: %v\n", err)
 			continue
 		}
 
-		peer := &TCPPeer{
-			conn: conn,
-		}
+		peer := &TCPPeer{conn: conn}
 		t.lock.Lock()
 		t.peers[conn.RemoteAddr().String()] = peer
 		t.lock.Unlock()
@@ -110,49 +68,36 @@ func (t *TCPTransport) ListenAndAccept() error {
 	}
 }
 
-func (t *TCPTransport) Broadcast(msg Message) error {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-
-	for _, peer := range t.peers {
-		err := peer.Send(msg)
-		if err != nil {
-			return err
-		}
+func (t *TCPTransport) Dial(address string) (Peer, error) {
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+
+	peer := &TCPPeer{conn: conn, outbound: true}
+	t.lock.Lock()
+	t.peers[address] = peer
+	t.lock.Unlock()
+
+	return peer, nil
 }
 
-func (t *TCPTransport) Close() error {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-
-	for _, peer := range t.peers {
+func (t *TCPTransport) handleConnection(peer *TCPPeer) {
+	defer func() {
+		t.lock.Lock()
+		delete(t.peers, peer.conn.RemoteAddr().String())
+		t.lock.Unlock()
 		peer.Close()
-	}
-	return t.listener.Close()
-}
+	}()
 
-func (t *TCPTransport) handleConnection(peer Peer) {
 	for {
 		msg, err := peer.Receive()
 		if err != nil {
-			fmt.Println("Error receiving message:", err)
+			log.Printf("Error receiving message: %v", err)
 			return
 		}
-		fmt.Printf("Received message: %s\n", string(msg.Payload))
-	}
-}
 
-func (t *TCPTransport) ConnectToPeers(peerDiscovery *discovery.PeerDiscovery) error {
-	peers := peerDiscovery.GetPeers()
-	for _, peerAddr := range peers {
-		_, err := t.Dial(peerAddr)
-		if err != nil {
-			log.Println("Error connecting to peer:", err)
-			continue
-		}
-		log.Println("Connected to peer:", peerAddr)
+		log.Printf("Received message from %s: %+v",
+			peer.conn.RemoteAddr().String(), msg)
 	}
-	return nil
 }
