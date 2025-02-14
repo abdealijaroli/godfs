@@ -1,11 +1,11 @@
 package node
 
 import (
-	"crypto/tls"
+	// "crypto/tls"
 	"encoding/json"
 	"errors"
-	"hash/fnv"
 	"fmt"
+	"hash/fnv"
 	"sync"
 	"time"
 
@@ -26,12 +26,12 @@ type DataEntry struct {
 	Timestamp time.Time
 }
 
-func NewDHT(selfNode string, tlsConfig *tls.Config) *DHT {
+func NewDHT(selfNode string) *DHT {
 	return &DHT{
 		data:      make(map[string]DataEntry),
 		nodes:     []string{},
 		selfNode:  selfNode,
-		transport: p2p.NewTCPTransport(selfNode, tlsConfig),
+		transport: p2p.NewTCPTransport(selfNode),
 	}
 }
 
@@ -79,10 +79,23 @@ func (d *DHT) Put(key, value string, version int64) {
 	defer d.lock.Unlock()
 
 	d.data[key] = DataEntry{
-		Value:     value,
+		Value:     string(value),
 		Version:   version,
 		Timestamp: time.Now(),
 	}
+}
+
+func (d *DHT) Store(key string, value []byte) error {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	d.data[key] = DataEntry{
+		Value:     string(value),
+		Version:   1,
+		Timestamp: time.Now(),
+	}
+
+	return nil
 }
 
 func (d *DHT) Get(key string) (string, error) {
