@@ -3,17 +3,17 @@ package config
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"os"
 	"fmt"
 	"net"
+	"os"
 )
 
 func DevTransport() net.Listener {
-    listener, err := net.Listen("tcp", "localhost:8000")
-    if err != nil {
-        panic(err)
-    }
-    return listener
+	listener, err := net.Listen("tcp", "localhost:8000")
+	if err != nil {
+		panic(err)
+	}
+	return listener
 }
 
 func LoadTLSConfig(certFile, keyFile, caFile string) (*tls.Config, error) {
