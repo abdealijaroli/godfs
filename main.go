@@ -24,6 +24,7 @@ type DebugServer struct {
 	fileManager *file.FileManager
 }
 
+// For dev purposes, we are not using TLS
 func NewDebugServer(dht *node.DHT, fileManager *file.FileManager) *DebugServer {
 	return &DebugServer{dht: dht, fileManager: fileManager}
 }
