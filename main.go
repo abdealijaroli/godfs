@@ -47,6 +47,7 @@ func (s *DebugServer) Handler() http.Handler {
 	return mux
 }
 
+
 // func (s *DebugServer) Start(port string) error {
 // 	mux := http.NewServeMux()
 // 	mux.HandleFunc("/", s.handleDashboard)
