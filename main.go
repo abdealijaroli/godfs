@@ -43,6 +43,7 @@ func (s *DebugServer) Handler() http.Handler {
 	mux.HandleFunc("/api/ring", s.handleRing)
 	mux.HandleFunc("/api/chunks", s.handleChunks)
 	mux.HandleFunc("/api/upload", s.handleUpload)
+	mux.HandleFunc("/api/health", s.handleHealth)
 
 	return mux
 }
@@ -161,6 +162,13 @@ func (s *DebugServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"message":  "File uploaded and distributed successfully",
 		"filename": header.Filename,
+	})
+}
+
+func (s *DebugServer) handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "ok",
 	})
 }
 
