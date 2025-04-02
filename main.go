@@ -18,7 +18,7 @@ import (
 	// "github.com/abdealijaroli/godfs/config"
 	"github.com/abdealijaroli/godfs/internal/file"
 	"github.com/abdealijaroli/godfs/internal/node"
-	"github.com/abdealijaroli/godfs/pkg/p2p"
+	// "github.com/abdealijaroli/godfs/pkg/p2p"
 )
 
 type DebugServer struct {
@@ -31,12 +31,12 @@ func NewDebugServer(dht *node.DHT, fileManager *file.FileManager) *DebugServer {
 	return &DebugServer{dht: dht, fileManager: fileManager}
 }
 
-func (s *DebugServer) Handler() http.Handler {
+func (s *DebugServer) Handler(port string) http.Handler {
 	mux := http.NewServeMux()
 
-	// Static files
-	fs := http.FileServer(http.Dir("static"))
-	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+	// // Static files
+	// fs := http.FileServer(http.Dir("static"))
+	// mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// API endpoints
 	mux.HandleFunc("/", s.handleDashboard)
@@ -47,7 +47,16 @@ func (s *DebugServer) Handler() http.Handler {
 	mux.HandleFunc("/api/upload", s.handleUpload)
 	mux.HandleFunc("/api/health", s.handleHealth)
 
-	return mux
+	server := &http.Server{
+		Addr:      ":"+port,
+		Handler:   mux,
+		TLSConfig: nil, // No TLS for dev mode
+	}
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
+	return nil
 }
 
 // func (s *DebugServer) Start(port string) error {
@@ -191,16 +200,16 @@ func main() {
 	dht.AddNode("localhost:8447")
 
 	// Create transport without TLS for Dev mode
-	transport := p2p.NewTCPTransport("localhost:" + *port)
-	go func() {
-		if err := transport.ListenAndAccept(); err != nil {
-			log.Fatalf("Failed to start transport: %v", err)
-		}
-	}()
+	// transport := p2p.NewTCPTransport("localhost:" + *port)
+	// go func() {
+	// 	if err := transport.ListenAndAccept(); err != nil {
+	// 		log.Fatalf("Failed to start transport: %v", err)
+	// 	}
+	// }()
 
 	// Start HTTP server without TLS for Dev mode
 	log.Printf("Starting HTTP server on port %s", *port)
-	if err := http.ListenAndServe(":"+*port, debugServer.Handler()); err != nil {
+	if err := http.ListenAndServe(":"+*port, debugServer.Handler(*port)); err != nil {
 		panic(err)
 	}
 }
