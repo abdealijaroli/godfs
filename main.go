@@ -21,6 +21,7 @@ import (
 	// "github.com/abdealijaroli/godfs/pkg/p2p"
 )
 
+// DHT network monitor
 type DebugServer struct {
 	dht         *node.DHT
 	fileManager *file.FileManager
@@ -48,7 +49,7 @@ func (s *DebugServer) Handler(port string) http.Handler {
 	mux.HandleFunc("/api/health", s.handleHealth)
 
 	server := &http.Server{
-		Addr:      ":"+port,
+		Addr:      ":" + port,
 		Handler:   mux,
 		TLSConfig: nil, // No TLS for dev mode
 	}
